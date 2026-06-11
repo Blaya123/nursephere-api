@@ -4,6 +4,7 @@ const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST || 'smtp.gmail.com',
   port: parseInt(process.env.SMTP_PORT || '587'),
   secure: process.env.SMTP_SECURE === 'true',
+  requireTLS: true,
   auth: {
     user: process.env.SMTP_USER || '',
     pass: process.env.SMTP_PASS || '',
@@ -27,10 +28,11 @@ export async function sendOTPEmail(email, otp) {
   };
 
   try {
-    await transporter.sendMail(msg);
+    const info = await transporter.sendMail(msg);
+    console.log('Email sent:', info.messageId);
     return true;
   } catch (err) {
-    console.error('Email send failed:', err.message);
+    console.error('Email send failed:', err.message, err.code);
     return false;
   }
 }
@@ -52,10 +54,11 @@ export async function sendResetEmail(email, token) {
   };
 
   try {
-    await transporter.sendMail(msg);
+    const info = await transporter.sendMail(msg);
+    console.log('Reset email sent:', info.messageId);
     return true;
   } catch (err) {
-    console.error('Email send failed:', err.message);
+    console.error('Reset email send failed:', err.message, err.code);
     return false;
   }
 }
