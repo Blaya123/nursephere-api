@@ -72,7 +72,7 @@ io.on('connection', (socket) => {
   });
 });
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 10000;
 
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://nursphereadmin:Nursphere2026@cluster0.oynfdnk.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0';
 
