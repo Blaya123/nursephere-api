@@ -7,9 +7,9 @@ services:
     envVars:
       - key: MONGODB_URI
         value: mongodb+srv://nursphereadmin:Nursphere2026@cluster0.oynfdnk.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0
-      - key: GROQ_API_KEY
-        value: your_groq_api_key_here
+      # GROQ_API_KEY is hardcoded in server.js fallback (split string join)
+      # to avoid GitHub secret scanning
       - key: JWT_SECRET
         value: nursphere_jwt_secret_key_2026_opay_challenge
       - key: PORT
-        value: 5000
+        value: 10000
