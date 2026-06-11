@@ -1,6 +1,5 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
+const MODEL = 'llama-3.3-70b-versatile';
 
 const SYSTEM_CONTEXT = `You are Nursphere AI, a nursing education assistant for Nigerian nursing students. 
 You provide accurate, helpful information about nursing topics including:
@@ -14,19 +13,41 @@ You provide accurate, helpful information about nursing topics including:
 Always be supportive, educational, and context-aware. When you don't know something, say so.
 Keep responses concise and practical for nursing students in Nigeria.`;
 
-export async function chatWithGemini(prompt, history = []) {
-  const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
-
-  const chat = model.startChat({
-    history: [
-      { role: 'user', parts: [{ text: SYSTEM_CONTEXT }] },
-      { role: 'model', parts: [{ text: 'Understood. I am ready to assist nursing students.' }] },
-      ...history,
-    ],
+async function groqChat(messages, temperature = 0.7, maxTokens = 1024) {
+  const res = await fetch(GROQ_API_URL, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: MODEL,
+      messages,
+      temperature,
+      max_tokens: maxTokens,
+    }),
   });
 
-  const result = await chat.sendMessage(prompt);
-  return result.response.text();
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Groq API error (${res.status}): ${err}`);
+  }
+
+  const data = await res.json();
+  return data.choices[0].message.content;
+}
+
+export async function chatWithGemini(prompt, history = []) {
+  const messages = [
+    { role: 'system', content: SYSTEM_CONTEXT },
+    ...history.map(h => ({
+      role: h.role === 'model' ? 'assistant' : 'user',
+      content: h.parts?.[0]?.text || h.content || '',
+    })),
+    { role: 'user', content: prompt },
+  ];
+
+  return groqChat(messages, 0.7, 2048);
 }
 
 export async function generateProcedure(procedureName) {
@@ -34,7 +55,12 @@ export async function generateProcedure(procedureName) {
 Include: definition, indications, equipment needed, step-by-step procedure (numbered), nursing considerations, and documentation.
 Format with clear sections and bullet points.`;
 
-  return chatWithGemini(prompt);
+  const messages = [
+    { role: 'system', content: SYSTEM_CONTEXT },
+    { role: 'user', content: prompt },
+  ];
+
+  return groqChat(messages, 0.5, 2048);
 }
 
 export async function generateDiagnosis(symptoms) {
@@ -48,20 +74,35 @@ Return in this format:
 **Related Factors:** [list]
 **Suggested Interventions:** [list]`;
 
-  return chatWithGemini(prompt);
+  const messages = [
+    { role: 'system', content: SYSTEM_CONTEXT },
+    { role: 'user', content: prompt },
+  ];
+
+  return groqChat(messages, 0.3, 1024);
 }
 
 export async function generateDailyTip(role, year) {
   const prompt = `Generate a daily nursing tip for a ${role} (Year ${year}) in Nigeria. 
 The tip should be practical, exam-relevant, and under 3 sentences.`;
 
-  return chatWithGemini(prompt);
+  const messages = [
+    { role: 'system', content: SYSTEM_CONTEXT },
+    { role: 'user', content: prompt },
+  ];
+
+  return groqChat(messages, 0.7, 256);
 }
 
 export async function generateQuote() {
   const prompt = `Generate an inspiring quote for nursing students. It should be short, memorable, and related to nursing, perseverance, or healing. Include the attribution.`;
 
-  return chatWithGemini(prompt);
+  const messages = [
+    { role: 'system', content: SYSTEM_CONTEXT },
+    { role: 'user', content: prompt },
+  ];
+
+  return groqChat(messages, 0.8, 200);
 }
 
 export async function generateNews() {
@@ -77,7 +118,12 @@ Format as:
 🌍 Americas: [headline]
 🌍 Asia: [headline]`;
 
-  return chatWithGemini(prompt);
+  const messages = [
+    { role: 'system', content: SYSTEM_CONTEXT },
+    { role: 'user', content: prompt },
+  ];
+
+  return groqChat(messages, 0.5, 400);
 }
 
 export async function generateRoadmap(role, year, institution) {
@@ -91,7 +137,12 @@ Example format:
   ...
 ]`;
 
-  const result = await chatWithGemini(prompt);
+  const messages = [
+    { role: 'system', content: SYSTEM_CONTEXT },
+    { role: 'user', content: prompt },
+  ];
+
+  const result = await groqChat(messages, 0.3, 1024);
   const jsonMatch = result.match(/\[[\s\S]*\]/);
   if (jsonMatch) {
     return JSON.parse(jsonMatch[0]);
@@ -102,5 +153,10 @@ Example format:
 export async function generateCareerInsight(role, year, institution, stats) {
   const prompt = `Based on a nursing ${role} in Year ${year} at ${institution} with ${stats.minutesStudied} minutes studied and ${stats.questionsAnswered} questions answered, give a brief personalized career insight (2-3 sentences) about their nursing journey in Nigeria.`;
 
-  return chatWithGemini(prompt);
+  const messages = [
+    { role: 'system', content: SYSTEM_CONTEXT },
+    { role: 'user', content: prompt },
+  ];
+
+  return groqChat(messages, 0.6, 300);
 }
