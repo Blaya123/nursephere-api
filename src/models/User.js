@@ -25,6 +25,15 @@ const userSchema = new mongoose.Schema({
     description: String,
     status: { type: String, enum: ['completed', 'in-progress', 'upcoming'], default: 'upcoming' },
   }],
+  isVerified: { type: Boolean, default: false },
+  otp: {
+    code: { type: String },
+    expiresAt: { type: Date },
+  },
+  resetToken: {
+    token: { type: String },
+    expiresAt: { type: Date },
+  },
 }, { timestamps: true });
 
 userSchema.pre('save', async function (next) {
