@@ -30,10 +30,10 @@ export async function sendOTPEmail(email, otp) {
   try {
     const info = await transporter.sendMail(msg);
     console.log('Email sent:', info.messageId);
-    return true;
+    return { ok: true };
   } catch (err) {
     console.error('Email send failed:', err.message, err.code);
-    return false;
+    return { ok: false, error: err.message, code: err.code };
   }
 }
 

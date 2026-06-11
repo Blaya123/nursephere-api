@@ -28,8 +28,8 @@ export async function sendOTP(req, res) {
       { upsert: true }
     );
 
-    const sent = await sendOTPEmail(email, otp);
-    res.json({ success: true, otp, message: sent ? 'OTP sent to email' : 'Email service unavailable. Use the OTP below.' });
+    const result = await sendOTPEmail(email, otp);
+    res.json({ success: true, otp, message: result.ok ? 'OTP sent to email' : 'Email service unavailable. Use the OTP below.', emailError: result.ok ? null : result.error });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -76,8 +76,8 @@ export async function resendOTP(req, res) {
     pending.otp = { code: otp, expiresAt: new Date(Date.now() + 10 * 60 * 1000) };
     await pending.save();
 
-    const sent = await sendOTPEmail(email, otp);
-    res.json({ success: true, otp, message: sent ? 'OTP resent' : 'Dev OTP provided' });
+    const result = await sendOTPEmail(email, otp);
+    res.json({ success: true, otp, message: result.ok ? 'OTP resent' : 'Dev OTP provided', emailError: result.ok ? null : result.error });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -127,8 +127,8 @@ export async function forgotPassword(req, res) {
     user.resetToken = { token, expiresAt: new Date(Date.now() + 60 * 60 * 1000) };
     await user.save();
 
-    const sent = await sendResetEmail(email, token);
-    res.json({ success: true, resetToken: token, message: sent ? 'Reset token sent to email' : 'Dev token provided' });
+    const result = await sendResetEmail(email, token);
+    res.json({ success: true, resetToken: token, message: result.ok ? 'Reset token sent to email' : 'Dev token provided', emailError: result.ok ? null : result.error });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
