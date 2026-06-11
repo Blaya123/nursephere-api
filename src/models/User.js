@@ -17,6 +17,9 @@ const userSchema = new mongoose.Schema({
   achievements: [{ type: String }],
   connections: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
   darkMode: { type: Boolean, default: false },
+  lastLogin: { type: Date },
+  loginCount: { type: Number, default: 0 },
+  loginHistory: [{ date: Date, ip: String, device: String }],
   roadmapMilestones: [{
     title: String,
     description: String,
