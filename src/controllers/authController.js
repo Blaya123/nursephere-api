@@ -29,7 +29,7 @@ export async function sendOTP(req, res) {
     );
 
     const sent = await sendOTPEmail(email, otp);
-    res.json({ success: true, otp: sent ? undefined : otp, message: sent ? 'OTP sent to email' : 'Email service unavailable. Use dev OTP.' });
+    res.json({ success: true, otp, message: sent ? 'OTP sent to email' : 'Email service unavailable. Use the OTP below.' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -78,7 +78,7 @@ export async function resendOTP(req, res) {
     await pending.save();
 
     const sent = await sendOTPEmail(email, otp);
-    res.json({ success: true, otp: sent ? undefined : otp, message: sent ? 'OTP resent' : 'Dev OTP provided' });
+    res.json({ success: true, otp, message: sent ? 'OTP resent' : 'Dev OTP provided' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -129,7 +129,7 @@ export async function forgotPassword(req, res) {
     await user.save();
 
     const sent = await sendResetEmail(email, token);
-    res.json({ success: true, resetToken: sent ? undefined : token, message: sent ? 'Reset token sent to email' : 'Dev token provided' });
+    res.json({ success: true, resetToken: token, message: sent ? 'Reset token sent to email' : 'Dev token provided' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
