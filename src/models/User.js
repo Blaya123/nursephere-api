@@ -1,0 +1,37 @@
+import mongoose from 'mongoose';
+import bcrypt from 'bcryptjs';
+
+const userSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  email: { type: String, required: true, unique: true, lowercase: true },
+  password: { type: String, required: true },
+  role: { type: String, enum: ['BSN Student', 'RN', 'Midwife', 'Nursing Student', 'Other'], default: 'Nursing Student' },
+  year: { type: String, default: '1' },
+  institution: { type: String, default: '' },
+  avatar: { type: String, default: '' },
+  stats: {
+    minutesStudied: { type: Number, default: 0 },
+    questionsAnswered: { type: Number, default: 0 },
+    connectionsCount: { type: Number, default: 0 },
+  },
+  achievements: [{ type: String }],
+  connections: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+  darkMode: { type: Boolean, default: false },
+  roadmapMilestones: [{
+    title: String,
+    description: String,
+    status: { type: String, enum: ['completed', 'in-progress', 'upcoming'], default: 'upcoming' },
+  }],
+}, { timestamps: true });
+
+userSchema.pre('save', async function (next) {
+  if (!this.isModified('password')) return next();
+  this.password = await bcrypt.hash(this.password, 12);
+  next();
+});
+
+userSchema.methods.comparePassword = async function (candidatePassword) {
+  return bcrypt.compare(candidatePassword, this.password);
+};
+
+export default mongoose.model('User', userSchema);
