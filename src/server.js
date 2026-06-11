@@ -18,6 +18,7 @@ dotenv.config();
 
 // Fallback env vars for Render Docker deployment
 if (!process.env.JWT_SECRET) process.env.JWT_SECRET = 'nursphere_jwt_secret_key_2026_opay_challenge';
+if (!process.env.MONGODB_URI) process.env.MONGODB_URI = 'mongodb+srv://nursphereadmin:Nursphere2026@cluster0.oynfdnk.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0';
 try {
   const k = ['gsk_Ok8sqeSdXatfyFExOAY3','WGdyb3FYKt77039SXbvoO0et0Uy6YzCg'];
   if (!process.env.GROQ_API_KEY) process.env.GROQ_API_KEY = k.join('');
