@@ -94,8 +94,8 @@ The tip should be practical, exam-relevant, and under 3 sentences.`;
   return groqChat(messages, 0.7, 256);
 }
 
-export async function generateQuote() {
-  const prompt = `Generate an inspiring quote for nursing students. It should be short, memorable, and related to nursing, perseverance, or healing. Include the attribution.`;
+export async function generateQuote(year) {
+  const prompt = `Generate an inspiring quote for a Year ${year} nursing student in Nigeria. The quote should be short, memorable, and related to nursing studies at their level, perseverance, or healing. Include the attribution.`;
 
   const messages = [
     { role: 'system', content: SYSTEM_CONTEXT },

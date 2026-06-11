@@ -1,8 +1,12 @@
 import { chatWithGemini, generateProcedure, generateDiagnosis, generateDailyTip, generateQuote, generateNews, generateRoadmap, generateCareerInsight } from '../services/gemini.js';
 import User from '../models/User.js';
 
-let insightsCache = null;
-let insightsCacheTime = 0;
+const insightsCache = new Map();
+
+function getCacheKey(year) {
+  const today = new Date().toISOString().slice(0, 10);
+  return `year${year}_${today}`;
+}
 
 export async function chat(req, res) {
   try {
@@ -36,21 +40,23 @@ export async function diagnosis(req, res) {
 
 export async function dailyInsights(req, res) {
   try {
-    const now = Date.now();
-    if (insightsCache && (now - insightsCacheTime) < 30 * 60 * 1000) {
-      return res.json(insightsCache);
+    const user = await User.findById(req.userId);
+    const year = user?.year || '1';
+    const cacheKey = getCacheKey(year);
+
+    if (insightsCache.has(cacheKey)) {
+      return res.json(insightsCache.get(cacheKey));
     }
 
-    const user = await User.findById(req.userId);
     const [tip, quote, news] = await Promise.all([
-      generateDailyTip(user?.role || 'Nursing Student', user?.year || '1'),
-      generateQuote(),
+      generateDailyTip(user?.role || 'Nursing Student', year),
+      generateQuote(year),
       generateNews(),
     ]);
 
-    insightsCache = { tip, quote, news };
-    insightsCacheTime = now;
-    res.json(insightsCache);
+    const result = { tip, quote, news };
+    insightsCache.set(cacheKey, result);
+    res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
