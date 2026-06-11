@@ -16,7 +16,7 @@ export async function sendOTP(req, res) {
     const { email } = req.body;
     if (!email) return res.status(400).json({ error: 'Email is required' });
 
-    const existing = await User.findOne({ email });
+    const existing = await User.findOne({ email, isVerified: true });
     if (existing) return res.status(400).json({ error: 'Email already registered' });
 
     const otp = generateOTP();
@@ -45,24 +45,23 @@ export async function verifyOTPAndRegister(req, res) {
     const pending = await User.findOne({ email, 'otp.code': otp, 'otp.expiresAt': { $gt: new Date() } });
     if (!pending) return res.status(400).json({ error: 'Invalid or expired OTP' });
 
-    const user = await User.create({
-      name, email, password,
-      role: 'Nursing Student',
-      year: year || '1',
-      institution: institution || '',
-      isVerified: true,
-      lastLogin: new Date(),
-      loginCount: 1,
-      otp: undefined,
-    });
+    pending.name = name;
+    pending.password = password;
+    pending.role = 'Nursing Student';
+    pending.year = year || '1';
+    pending.institution = institution || '';
+    pending.isVerified = true;
+    pending.lastLogin = new Date();
+    pending.loginCount = 1;
+    pending.otp = undefined;
+    await pending.save();
 
-    const token = generateToken(user._id);
+    const token = generateToken(pending._id);
     res.status(201).json({
       token,
-      user: { id: user._id, name: user.name, email: user.email, role: user.role, year: user.year, institution: user.institution, stats: user.stats, darkMode: user.darkMode, lastLogin: user.lastLogin, loginCount: user.loginCount, createdAt: user.createdAt },
+      user: { id: pending._id, name: pending.name, email: pending.email, role: pending.role, year: pending.year, institution: pending.institution, stats: pending.stats, darkMode: pending.darkMode, lastLogin: pending.lastLogin, loginCount: pending.loginCount, createdAt: pending.createdAt },
     });
   } catch (err) {
-    if (err.code === 11000) return res.status(400).json({ error: 'Email already registered' });
     res.status(500).json({ error: err.message });
   }
 }
