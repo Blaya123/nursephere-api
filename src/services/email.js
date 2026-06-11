@@ -13,7 +13,7 @@ const transporter = nodemailer.createTransport({
 
 export async function sendOTPEmail(email, otp) {
   const msg = {
-    from: `"Nursphere" <${process.env.SMTP_FROM || 'noreply@nursphere.app'}>`,
+    from: process.env.SMTP_FROM || '"Nursphere" <noreply@nursphere.app>',
     to: email,
     subject: 'Your Nursphere OTP Code',
     text: `Your OTP code is: ${otp}\n\nThis code expires in 10 minutes.\n\nIf you did not request this, please ignore this email.\n\n- Nursphere Team`,
@@ -39,7 +39,7 @@ export async function sendOTPEmail(email, otp) {
 
 export async function sendResetEmail(email, token) {
   const msg = {
-    from: `"Nursphere" <${process.env.SMTP_FROM || 'noreply@nursphere.app'}>`,
+    from: process.env.SMTP_FROM || '"Nursphere" <noreply@nursphere.app>',
     to: email,
     subject: 'Reset Your Nursphere Password',
     text: `Your password reset token is: ${token}\n\nThis token expires in 1 hour.\n\nIf you did not request this, please ignore this email.\n\n- Nursphere Team`,
