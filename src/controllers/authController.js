@@ -19,6 +19,8 @@ export async function sendOTP(req, res) {
     const existing = await User.findOne({ email, isVerified: true });
     if (existing) return res.status(400).json({ error: 'Email already registered' });
 
+    await User.deleteOne({ email, isVerified: { $ne: true } });
+
     const otp = generateOTP();
     const otpExpires = new Date(Date.now() + 10 * 60 * 1000);
 
@@ -125,7 +127,7 @@ export async function forgotPassword(req, res) {
 
     const token = crypto.randomBytes(32).toString('hex');
     user.resetToken = { token, expiresAt: new Date(Date.now() + 60 * 60 * 1000) };
-    await user.save();
+    await user.save({ validateBeforeSave: false });
 
     const result = await sendResetEmail(email, token);
     res.json({ success: true, resetToken: token, message: result.ok ? 'Reset token sent to email' : 'Dev token provided', emailError: result.ok ? null : result.error });
