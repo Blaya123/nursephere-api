@@ -117,6 +117,30 @@ export async function login(req, res) {
   }
 }
 
+export async function verifyExistingOTP(req, res) {
+  try {
+    const { email, otp } = req.body;
+    if (!email || !otp) return res.status(400).json({ error: 'Email and OTP required' });
+
+    const user = await User.findOne({ email, 'otp.code': otp, 'otp.expiresAt': { $gt: new Date() } });
+    if (!user) return res.status(400).json({ error: 'Invalid or expired OTP' });
+
+    user.isVerified = true;
+    user.otp = undefined;
+    user.lastLogin = new Date();
+    user.loginCount = (user.loginCount || 0) + 1;
+    await user.save({ validateBeforeSave: false });
+
+    const token = generateToken(user._id);
+    res.json({
+      token,
+      user: { id: user._id, name: user.name, email: user.email, role: user.role, year: user.year, institution: user.institution, stats: user.stats, darkMode: user.darkMode, achievements: user.achievements, roadmapMilestones: user.roadmapMilestones, lastLogin: user.lastLogin, loginCount: user.loginCount },
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+}
+
 export async function forgotPassword(req, res) {
   try {
     const { email } = req.body;
