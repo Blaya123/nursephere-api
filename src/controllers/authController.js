@@ -172,7 +172,9 @@ export async function resetPassword(req, res) {
 
     user.password = newPassword;
     user.resetToken = undefined;
-    await user.save();
+    user.isVerified = true;
+    if (!user.name) user.name = user.email.split('@')[0];
+    await user.save({ validateBeforeSave: false });
 
     res.json({ success: true, message: 'Password reset successful' });
   } catch (err) {
