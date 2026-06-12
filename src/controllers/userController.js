@@ -169,6 +169,11 @@ export async function unblockUser(req, res) {
     user.blockedUsers = user.blockedUsers.filter(id => id.toString() !== userId);
     await user.save();
 
+    await Conversation.updateMany(
+      { participants: { $all: [req.userId, userId] } },
+      { status: 'active' }
+    );
+
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });

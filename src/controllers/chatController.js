@@ -151,6 +151,10 @@ export async function getDMMessages(req, res) {
       return res.status(403).json({ error: 'Not a participant' });
     }
 
+    if (conversation.status === 'blocked') {
+      return res.status(403).json({ error: 'This conversation is blocked' });
+    }
+
     const user = await User.findById(req.userId).select('blockedUsers').lean();
     const otherParticipant = conversation.participants.find(p => p.toString() !== req.userId);
     if (otherParticipant && (user?.blockedUsers || []).some(id => id.toString() === otherParticipant.toString())) {
