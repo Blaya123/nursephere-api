@@ -16,6 +16,7 @@ const userSchema = new mongoose.Schema({
   },
   achievements: [{ type: String }],
   connections: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+  blockedUsers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
   darkMode: { type: Boolean, default: false },
   lastLogin: { type: Date },
   loginCount: { type: Number, default: 0 },

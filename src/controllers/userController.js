@@ -107,3 +107,81 @@ export async function getUserById(req, res) {
     res.status(500).json({ error: err.message });
   }
 }
+
+export async function removeConnection(req, res) {
+  try {
+    const { userId } = req.body;
+    const user = await User.findById(req.userId);
+    const target = await User.findById(userId);
+    if (!target) return res.status(404).json({ error: 'User not found' });
+
+    user.connections = user.connections.filter(id => id.toString() !== userId);
+    user.stats.connectionsCount = user.connections.length;
+    await user.save();
+
+    if (target) {
+      target.connections = target.connections.filter(id => id.toString() !== req.userId);
+      target.stats.connectionsCount = target.connections.length;
+      await target.save();
+    }
+
+    res.json({ success: true, connectionsCount: user.stats.connectionsCount });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+}
+
+export async function blockUser(req, res) {
+  try {
+    const { userId } = req.body;
+    if (!userId) return res.status(400).json({ error: 'userId required' });
+
+    const user = await User.findById(req.userId);
+    if (!user.blockedUsers.includes(userId)) {
+      user.blockedUsers.push(userId);
+    }
+    user.connections = user.connections.filter(id => id.toString() !== userId);
+    user.stats.connectionsCount = user.connections.length;
+    await user.save();
+
+    const target = await User.findById(userId);
+    if (target) {
+      target.connections = target.connections.filter(id => id.toString() !== req.userId);
+      target.stats.connectionsCount = target.connections.length;
+      await target.save();
+    }
+
+    await Conversation.updateMany(
+      { participants: { $all: [req.userId, userId] } },
+      { status: 'blocked' }
+    );
+
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+}
+
+export async function unblockUser(req, res) {
+  try {
+    const { userId } = req.body;
+    const user = await User.findById(req.userId);
+    user.blockedUsers = user.blockedUsers.filter(id => id.toString() !== userId);
+    await user.save();
+
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+}
+
+export async function getBlockedUsers(req, res) {
+  try {
+    const user = await User.findById(req.userId)
+      .select('blockedUsers')
+      .populate('blockedUsers', 'name role year institution');
+    res.json(user?.blockedUsers || []);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+}

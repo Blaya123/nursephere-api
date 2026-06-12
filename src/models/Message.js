@@ -12,6 +12,8 @@ const messageSchema = new mongoose.Schema({
     users: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
   }],
   unreadFor: [{ type: String }],
+  deleted: { type: Boolean, default: false },
+  deletedAt: { type: Date },
 }, { timestamps: true });
 
 messageSchema.index({ channel: 1, createdAt: -1 });

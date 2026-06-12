@@ -94,12 +94,16 @@ export async function getConversations(req, res) {
   try {
     const conversations = await Conversation.find({
       participants: req.userId,
+      status: { $ne: 'blocked' },
     }).populate('participants lastSender', 'name email role year').sort({ lastTime: -1 }).lean();
 
-    const user = await User.findById(req.userId).select('name email');
+    const user = await User.findById(req.userId).select('name email blockedUsers').lean();
+    const blockedIds = (user?.blockedUsers || []).map(id => id.toString());
+
     const result = conversations.map(c => {
       const other = c.participants.find(p => p._id.toString() !== req.userId);
-      return { ...c, other };
+      const isBlocked = other && blockedIds.includes(other._id.toString());
+      return { ...c, other: other ? { ...other, isBlocked } : null };
     });
     res.json(result);
   } catch (err) {
@@ -117,8 +121,15 @@ export async function getOrCreateConversation(req, res) {
     });
 
     if (!conversation) {
+      const isConnected = await User.findOne({
+        _id: req.userId,
+        connections: otherUserId,
+      });
+
       conversation = await Conversation.create({
         participants: [req.userId, otherUserId],
+        status: isConnected ? 'active' : 'pending',
+        requestedBy: req.userId,
       });
     }
 
@@ -140,12 +151,18 @@ export async function getDMMessages(req, res) {
       return res.status(403).json({ error: 'Not a participant' });
     }
 
+    const user = await User.findById(req.userId).select('blockedUsers').lean();
+    const otherParticipant = conversation.participants.find(p => p.toString() !== req.userId);
+    if (otherParticipant && (user?.blockedUsers || []).some(id => id.toString() === otherParticipant.toString())) {
+      return res.status(403).json({ error: 'You have blocked this user' });
+    }
+
     await Message.updateMany(
       { conversationId, unreadFor: req.userId },
       { $pull: { unreadFor: req.userId } }
     );
 
-    const messages = await Message.find({ conversationId })
+    const messages = await Message.find({ conversationId, deleted: false })
       .sort({ createdAt: -1 }).limit(100).lean();
     res.json(messages.reverse());
   } catch (err) {
@@ -164,10 +181,21 @@ export async function sendDMMessage(req, res) {
     if (!conversation.participants.some(p => p.toString() === req.userId)) {
       return res.status(403).json({ error: 'Not a participant' });
     }
-
-    const user = await User.findById(req.userId).select('name');
+    if (conversation.status === 'blocked') {
+      return res.status(403).json({ error: 'This conversation is blocked' });
+    }
 
     const otherParticipant = conversation.participants.find(p => p.toString() !== req.userId);
+
+    const blockerCheck = await User.findOne({
+      _id: otherParticipant,
+      blockedUsers: req.userId,
+    });
+    if (blockerCheck) {
+      return res.status(403).json({ error: 'You have been blocked by this user' });
+    }
+
+    const user = await User.findById(req.userId).select('name');
 
     const msg = await Message.create({
       conversationId,
@@ -204,6 +232,89 @@ export async function getUnreadCount(req, res) {
       unreadFor: req.userId,
     });
     res.json({ unread: count });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+}
+
+export async function deleteMessage(req, res) {
+  try {
+    const { conversationId, messageId } = req.params;
+    const conversation = await Conversation.findById(conversationId);
+    if (!conversation) return res.status(404).json({ error: 'Conversation not found' });
+
+    const msg = await Message.findById(messageId);
+    if (!msg) return res.status(404).json({ error: 'Message not found' });
+    if (msg.userId !== req.userId) return res.status(403).json({ error: 'Can only delete your own messages' });
+
+    msg.deleted = true;
+    msg.deletedAt = new Date();
+    msg.text = '[deleted]';
+    await msg.save();
+
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+}
+
+export async function acceptConversation(req, res) {
+  try {
+    const { conversationId } = req.params;
+    const conversation = await Conversation.findById(conversationId);
+    if (!conversation) return res.status(404).json({ error: 'Conversation not found' });
+    if (!conversation.participants.some(p => p.toString() === req.userId)) {
+      return res.status(403).json({ error: 'Not a participant' });
+    }
+    if (conversation.status !== 'pending') {
+      return res.status(400).json({ error: 'Conversation is not pending' });
+    }
+
+    conversation.status = 'active';
+    await conversation.save();
+
+    const otherId = conversation.participants.find(p => p.toString() !== req.userId);
+    if (otherId) {
+      await User.findByIdAndUpdate(req.userId, {
+        $addToSet: { connections: otherId },
+        $inc: { 'stats.connectionsCount': 1 },
+      });
+      await User.findByIdAndUpdate(otherId, {
+        $addToSet: { connections: req.userId },
+        $inc: { 'stats.connectionsCount': 1 },
+      });
+    }
+
+    const populated = await Conversation.findById(conversationId)
+      .populate('participants lastSender', 'name email role year institution');
+
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('friend:accepted', { conversationId, userId: otherId?.toString() });
+    }
+
+    res.json(populated);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+}
+
+export async function rejectConversation(req, res) {
+  try {
+    const { conversationId } = req.params;
+    const conversation = await Conversation.findById(conversationId);
+    if (!conversation) return res.status(404).json({ error: 'Conversation not found' });
+    if (!conversation.participants.some(p => p.toString() === req.userId)) {
+      return res.status(403).json({ error: 'Not a participant' });
+    }
+    if (conversation.status !== 'pending') {
+      return res.status(400).json({ error: 'Conversation is not pending' });
+    }
+
+    await Message.deleteMany({ conversationId });
+    await Conversation.findByIdAndDelete(conversationId);
+
+    res.json({ success: true, message: 'Conversation rejected and removed' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
