@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import auth from '../middleware/auth.js';
-import { getProfile, updateProfile, getUsers, connectUser, getConnections } from '../controllers/userController.js';
+import { getProfile, updateProfile, getUsers, connectUser, getConnections, getUserById } from '../controllers/userController.js';
 
 const router = Router();
 
@@ -9,5 +9,6 @@ router.put('/profile', auth, updateProfile);
 router.get('/all', auth, getUsers);
 router.post('/connect', auth, connectUser);
 router.get('/connections', auth, getConnections);
+router.get('/:id', auth, getUserById);
 
 export default router;

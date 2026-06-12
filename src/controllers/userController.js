@@ -85,3 +85,25 @@ export async function getConnections(req, res) {
     res.status(500).json({ error: err.message });
   }
 }
+
+export async function getUserById(req, res) {
+  try {
+    const user = await User.findById(req.params.id)
+      .select('-password -loginHistory -otp -resetToken');
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    res.json({
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      year: user.year,
+      institution: user.institution,
+      avatar: user.avatar,
+      stats: user.stats,
+      connectionsCount: user.stats?.connectionsCount || 0,
+      createdAt: user.createdAt,
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+}
