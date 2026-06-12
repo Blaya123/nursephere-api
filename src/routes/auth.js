@@ -1,5 +1,6 @@
 import { Router } from 'express';
-import { sendOTP, verifyOTPAndRegister, verifyExistingOTP, resendOTP, login, forgotPassword, resetPassword } from '../controllers/authController.js';
+import auth from '../middleware/auth.js';
+import { sendOTP, verifyOTPAndRegister, verifyExistingOTP, resendOTP, login, forgotPassword, resetPassword, changePassword } from '../controllers/authController.js';
 
 const router = Router();
 
@@ -10,5 +11,6 @@ router.post('/resend-otp', resendOTP);
 router.post('/login', login);
 router.post('/forgot-password', forgotPassword);
 router.post('/reset-password', resetPassword);
+router.put('/change-password', auth, changePassword);
 
 export default router;
