@@ -2,7 +2,7 @@ import { Router } from 'express';
 import auth from '../middleware/auth.js';
 import {
   getMessages, sendMessage, getChannels, getSeedUsers, addReaction,
-  getConversations, getOrCreateConversation, getDMMessages, sendDMMessage
+  getConversations, getOrCreateConversation, getDMMessages, sendDMMessage, getUnreadCount
 } from '../controllers/chatController.js';
 
 const router = Router();
@@ -17,5 +17,6 @@ router.get('/conversations', auth, getConversations);
 router.post('/conversations', auth, getOrCreateConversation);
 router.get('/conversations/:conversationId/messages', auth, getDMMessages);
 router.post('/conversations/:conversationId/messages', auth, sendDMMessage);
+router.get('/unread-count', auth, getUnreadCount);
 
 export default router;

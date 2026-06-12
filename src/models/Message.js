@@ -11,6 +11,7 @@ const messageSchema = new mongoose.Schema({
     emoji: String,
     users: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
   }],
+  unreadFor: [{ type: String }],
 }, { timestamps: true });
 
 messageSchema.index({ channel: 1, createdAt: -1 });

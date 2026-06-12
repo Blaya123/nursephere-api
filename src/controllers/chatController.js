@@ -140,6 +140,11 @@ export async function getDMMessages(req, res) {
       return res.status(403).json({ error: 'Not a participant' });
     }
 
+    await Message.updateMany(
+      { conversationId, unreadFor: req.userId },
+      { $pull: { unreadFor: req.userId } }
+    );
+
     const messages = await Message.find({ conversationId })
       .sort({ createdAt: -1 }).limit(100).lean();
     res.json(messages.reverse());
@@ -150,7 +155,8 @@ export async function getDMMessages(req, res) {
 
 export async function sendDMMessage(req, res) {
   try {
-    const { conversationId, text } = req.body;
+    const { conversationId } = req.params;
+    const { text } = req.body;
     if (!text) return res.status(400).json({ error: 'Text is required' });
 
     const conversation = await Conversation.findById(conversationId);
@@ -161,11 +167,14 @@ export async function sendDMMessage(req, res) {
 
     const user = await User.findById(req.userId).select('name');
 
+    const otherParticipant = conversation.participants.find(p => p.toString() !== req.userId);
+
     const msg = await Message.create({
       conversationId,
       userId: req.userId,
       userName: user?.name || 'Anonymous',
       text,
+      unreadFor: otherParticipant ? [otherParticipant.toString()] : [],
     });
 
     conversation.lastMessage = text;
@@ -184,6 +193,17 @@ export async function sendDMMessage(req, res) {
     }
 
     res.status(201).json(msg);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+}
+
+export async function getUnreadCount(req, res) {
+  try {
+    const count = await Message.countDocuments({
+      unreadFor: req.userId,
+    });
+    res.json({ unread: count });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
