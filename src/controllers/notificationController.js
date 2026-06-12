@@ -6,10 +6,18 @@ export async function getNotifications(req, res) {
     const user = await User.findById(req.userId).select('role');
     const userRole = user?.role || 'Other';
     const notifications = await Notification.find({
-      $or: [{ targetRole: 'all' }, { targetRole: userRole }],
+      $or: [
+        { targetRole: 'all' },
+        { targetRole: userRole },
+        { targetUser: req.userId },
+      ],
     }).sort({ createdAt: -1 }).limit(50);
     const unreadCount = await Notification.countDocuments({
-      $or: [{ targetRole: 'all' }, { targetRole: userRole }],
+      $or: [
+        { targetRole: 'all' },
+        { targetRole: userRole },
+        { targetUser: req.userId },
+      ],
       readBy: { $ne: req.userId },
     });
     res.json({ notifications, unreadCount });
@@ -37,7 +45,10 @@ export async function markAllRead(req, res) {
     const user = await User.findById(req.userId).select('role');
     const userRole = user?.role || 'Other';
     await Notification.updateMany(
-      { $or: [{ targetRole: 'all' }, { targetRole: userRole }], readBy: { $ne: req.userId } },
+      {
+        $or: [{ targetRole: 'all' }, { targetRole: userRole }, { targetUser: req.userId }],
+        readBy: { $ne: req.userId },
+      },
       { $push: { readBy: req.userId } }
     );
     res.json({ success: true });

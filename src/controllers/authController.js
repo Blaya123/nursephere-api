@@ -63,7 +63,7 @@ export async function verifyOTPAndRegister(req, res) {
       title: 'Welcome to Nursphere!',
       message: `Hi ${pending.name.split(' ')[0]}, welcome to Nursphere! Start your academic planner, explore the drug reference, or connect with fellow nursing students.`,
       type: 'general',
-      targetRole: 'all',
+      targetUser: pending._id,
     }).catch(() => {});
 
     const token = generateToken(pending._id);

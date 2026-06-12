@@ -5,6 +5,7 @@ const notificationSchema = new mongoose.Schema({
   message: { type: String, required: true },
   type: { type: String, enum: ['general', 'exam', 'event', 'update', 'announcement'], default: 'general' },
   targetRole: { type: String, enum: ['BNSc Student', 'Diploma Nursing Student', 'Midwifery Student', 'Community Nursing Student', 'Post-Basic Student', 'RN', 'Midwife', 'Nursing Student', 'Other', 'all'], default: 'all' },
+  targetUser: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   link: { type: String, default: '' },
   readBy: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
