@@ -32,7 +32,7 @@ export async function sendOTP(req, res) {
     );
 
     const result = await sendOTPEmail(email, otp);
-    res.json({ success: true, otp, message: result.ok ? 'OTP sent to email' : 'Email service unavailable. Use the OTP below.', emailError: result.ok ? null : result.error });
+    res.json({ success: true, message: result.ok ? 'OTP sent to email' : 'Email service unavailable', emailError: result.ok ? null : result.error });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -87,7 +87,7 @@ export async function resendOTP(req, res) {
     await pending.save();
 
     const result = await sendOTPEmail(email, otp);
-    res.json({ success: true, otp, message: result.ok ? 'OTP resent' : 'Dev OTP provided', emailError: result.ok ? null : result.error });
+    res.json({ success: true, message: result.ok ? 'OTP resent' : 'Email unavailable', emailError: result.ok ? null : result.error });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
