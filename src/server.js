@@ -13,6 +13,7 @@ import chatRoutes from './routes/chat.js';
 import roadmapRoutes from './routes/roadmap.js';
 import statsRoutes from './routes/stats.js';
 import drugRoutes from './routes/drugs.js';
+import apRoutes from './routes/ap.js';
 
 dotenv.config();
 
@@ -38,6 +39,7 @@ app.use('/api/chat', chatRoutes);
 app.use('/api/roadmap', roadmapRoutes);
 app.use('/api/stats', statsRoutes);
 app.use('/api/drugs', drugRoutes);
+app.use('/api/ap', apRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', app: 'Nursphere', version: '1.0.0' });

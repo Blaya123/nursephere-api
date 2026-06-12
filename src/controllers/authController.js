@@ -39,7 +39,7 @@ export async function sendOTP(req, res) {
 
 export async function verifyOTPAndRegister(req, res) {
   try {
-    const { name, email, password, otp, year, institution } = req.body;
+    const { name, email, password, otp, role, year, institution } = req.body;
     if (!name || !email || !password || !otp) {
       return res.status(400).json({ error: 'All fields required' });
     }
@@ -49,7 +49,7 @@ export async function verifyOTPAndRegister(req, res) {
 
     pending.name = name;
     pending.password = password;
-    pending.role = 'Nursing Student';
+    pending.role = role || 'BNSc Student';
     pending.year = year || '1';
     pending.institution = institution || '';
     pending.isVerified = true;
