@@ -16,6 +16,7 @@ import drugRoutes from './routes/drugs.js';
 import apRoutes from './routes/ap.js';
 import notificationRoutes from './routes/notifications.js';
 import adminRoutes from './routes/admin.js';
+import newsRoutes from './routes/news.js';
 
 dotenv.config();
 
@@ -44,6 +45,7 @@ app.use('/api/drugs', drugRoutes);
 app.use('/api/ap', apRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/news', newsRoutes);
 
 app.set('io', io);
 

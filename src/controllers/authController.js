@@ -1,6 +1,7 @@
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import User from '../models/User.js';
+import Notification from '../models/Notification.js';
 import { sendOTPEmail, sendResetEmail } from '../services/email.js';
 
 function generateToken(id) {
@@ -57,6 +58,13 @@ export async function verifyOTPAndRegister(req, res) {
     pending.loginCount = 1;
     pending.otp = undefined;
     await pending.save();
+
+    await Notification.create({
+      title: 'Welcome to Nursphere!',
+      message: `Hi ${pending.name.split(' ')[0]}, welcome to Nursphere! Start your academic planner, explore the drug reference, or connect with fellow nursing students.`,
+      type: 'general',
+      targetRole: 'all',
+    }).catch(() => {});
 
     const token = generateToken(pending._id);
     res.status(201).json({
