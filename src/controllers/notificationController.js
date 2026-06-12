@@ -59,9 +59,12 @@ export async function createNotification(req, res) {
 
     const io = req.app.get('io');
     if (io) {
-      if (targetRole === 'all') {
-        io.emit('notification:new', notification);
-      }
+      const sockets = io.sockets.sockets;
+      sockets.forEach(s => {
+        if (targetRole === 'all') {
+          s.emit('notification:new', notification);
+        }
+      });
     }
 
     res.status(201).json(notification);

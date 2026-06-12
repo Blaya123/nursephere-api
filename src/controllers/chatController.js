@@ -218,9 +218,12 @@ export async function sendDMMessage(req, res) {
     if (io) {
       conversation.participants.forEach(pid => {
         const sid = pid.toString();
-        if (sid !== req.userId) {
-          io.emit('dm:new', { conversationId, message: msg, userId: sid });
-        }
+        const sockets = io.sockets.sockets;
+        sockets.forEach(s => {
+          if (s.handshake.query.userId === sid) {
+            s.emit('dm:new', { conversationId, message: msg, userId: sid });
+          }
+        });
       });
     }
 
@@ -294,7 +297,13 @@ export async function acceptConversation(req, res) {
 
     const io = req.app.get('io');
     if (io) {
-      io.emit('friend:accepted', { conversationId, userId: otherId?.toString() });
+      const sockets = io.sockets.sockets;
+      sockets.forEach(s => {
+        const uid = s.handshake.query.userId;
+        if (uid === req.userId || uid === otherId?.toString()) {
+          s.emit('friend:accepted', { conversationId, userId: uid });
+        }
+      });
     }
 
     res.json(populated);

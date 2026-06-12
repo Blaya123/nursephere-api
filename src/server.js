@@ -55,11 +55,17 @@ app.get('/api/health', (req, res) => {
 
 const onlineUsers = new Map();
 
+function getSocketIds(userId) {
+  const sockets = onlineUsers.get(userId);
+  return sockets ? Array.from(sockets) : [];
+}
+
 io.on('connection', (socket) => {
   const userId = socket.handshake.query.userId;
 
   if (userId) {
-    onlineUsers.set(userId, socket.id);
+    if (!onlineUsers.has(userId)) onlineUsers.set(userId, new Set());
+    onlineUsers.get(userId).add(socket.id);
     io.emit('user:online', { userId, onlineUsers: Array.from(onlineUsers.keys()) });
   }
 
@@ -72,8 +78,9 @@ io.on('connection', (socket) => {
   });
 
   socket.on('disconnect', () => {
-    if (userId) {
-      onlineUsers.delete(userId);
+    if (userId && onlineUsers.has(userId)) {
+      onlineUsers.get(userId).delete(socket.id);
+      if (onlineUsers.get(userId).size === 0) onlineUsers.delete(userId);
       io.emit('user:offline', { userId, onlineUsers: Array.from(onlineUsers.keys()) });
     }
   });

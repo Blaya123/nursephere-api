@@ -23,6 +23,41 @@ export async function getDashboard(req, res) {
       { $group: { _id: null, total: { $sum: '$stats.minutesStudied' } } },
     ]);
 
+    const pendingRequests = await Conversation.countDocuments({ status: 'pending' });
+    const activeConversations = await Conversation.countDocuments({ status: 'active' });
+    const blockedConversations = await Conversation.countDocuments({ status: 'blocked' });
+
+    const messagesLast7Days = await Message.aggregate([
+      { $match: { createdAt: { $gte: new Date(Date.now() - 7 * 86400000) } } },
+      { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } }, count: { $sum: 1 } } },
+      { $sort: { _id: 1 } },
+    ]);
+
+    const mostActiveMessages = await Message.aggregate([
+      { $match: { userId: { $exists: true, $nin: ['seed1', 'seed2', 'seed3', 'seed4', 'seed5', 'seed6', 'seed7'] } } },
+      { $group: { _id: '$userId', count: { $sum: 1 } } },
+      { $sort: { count: -1 } },
+      { $limit: 10 },
+    ]);
+
+    const mostActive = [];
+    if (mostActiveMessages.length > 0) {
+      const stringIds = mostActiveMessages.map(u => u._id).filter(id => id && id.length > 5);
+      const users = await User.find({ _id: { $in: stringIds } }).select('name email role').lean();
+      const usersMap = {};
+      users.forEach(u => { usersMap[u._id.toString()] = u; });
+      mostActiveMessages.forEach(u => {
+        const userData = usersMap[u._id];
+        mostActive.push({
+          userId: u._id,
+          name: userData?.name || 'Unknown',
+          email: userData?.email || '',
+          role: userData?.role || '',
+          messageCount: u.count,
+        });
+      });
+    }
+
     res.json({
       totalUsers,
       totalMessages,
@@ -31,6 +66,11 @@ export async function getDashboard(req, res) {
       messagesToday,
       roleBreakdown,
       totalMinutesStudied: totalMinutesStudied[0]?.total || 0,
+      pendingRequests,
+      activeConversations,
+      blockedConversations,
+      messagesLast7Days,
+      mostActiveUsers: mostActive,
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
