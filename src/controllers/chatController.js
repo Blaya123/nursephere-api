@@ -1,4 +1,6 @@
 import Message from '../models/Message.js';
+import Conversation from '../models/Conversation.js';
+import User from '../models/User.js';
 
 const SEED_USERS = [
   { id: 'seed1', name: 'Amina Bello', role: 'BSN Student', year: '3', institution: 'University of Ibadan' },
@@ -13,7 +15,7 @@ const SEED_USERS = [
 const SEED_MESSAGES = [
   { channel: 'general', userId: 'seed1', userName: 'Amina Bello', userAvatar: '', text: 'Good morning everyone! How is your study going?' },
   { channel: 'general', userId: 'seed2', userName: 'Chidi Okonkwo', userAvatar: '', text: 'Morning Amina! Just finished my night shift. Time to review some NMCN questions.' },
-  { channel: 'general', userId: 'seed3', userName: 'Fatima Yusuf', userAvatar: '', text: 'Can anyone share tips for Pharmacology? The drug names are overwhelming 😅' },
+  { channel: 'general', userId: 'seed3', userName: 'Fatima Yusuf', userAvatar: '', text: 'Can anyone share tips for Pharmacology? The drug names are overwhelming \uD83D\uDE05' },
   { channel: 'study-corner', userId: 'seed5', userName: 'Grace Akpan', userAvatar: '', text: 'I found a great mnemonic for cranial nerves! On Old Olympus Towering Tops...' },
   { channel: 'study-corner', userId: 'seed2', userName: 'Chidi Okonkwo', userAvatar: '', text: 'Try to group drugs by class, Fatima. Beta-blockers end in -lol, ACE inhibitors in -pril.' },
   { channel: 'clinical-discussions', userId: 'seed4', userName: 'Emeka Nwosu', userAvatar: '', text: 'Had an interesting case of preeclampsia yesterday. BP was 160/100. Started on IV hydralazine.' },
@@ -55,11 +57,11 @@ export async function sendMessage(req, res) {
 
 export async function getChannels(req, res) {
   res.json([
-    { id: 'general', name: 'General', icon: '💬', description: 'Welcome and general discussions' },
-    { id: 'study-corner', name: 'Study Corner', icon: '📚', description: 'Share study resources and tips' },
-    { id: 'clinical-discussions', name: 'Clinical Discussions', icon: '🏥', description: 'Case studies and clinical experiences' },
-    { id: 'job-board', name: 'Job Board', icon: '💼', description: 'Job postings and opportunities' },
-    { id: 'student-connect', name: 'Student Connect', icon: '👋', description: 'Connect with fellow students' },
+    { id: 'general', name: 'General', icon: '\uD83D\uDCAC', description: 'Welcome and general discussions' },
+    { id: 'study-corner', name: 'Study Corner', icon: '\uD83D\uDCDA', description: 'Share study resources and tips' },
+    { id: 'clinical-discussions', name: 'Clinical Discussions', icon: '\uD83C\uDFE5', description: 'Case studies and clinical experiences' },
+    { id: 'job-board', name: 'Job Board', icon: '\uD83D\uDCBC', description: 'Job postings and opportunities' },
+    { id: 'student-connect', name: 'Student Connect', icon: '\uD83D\uDC4B', description: 'Connect with fellow students' },
   ]);
 }
 
@@ -83,6 +85,105 @@ export async function addReaction(req, res) {
     }
     await msg.save();
     res.json(msg);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+}
+
+export async function getConversations(req, res) {
+  try {
+    const conversations = await Conversation.find({
+      participants: req.userId,
+    }).populate('participants lastSender', 'name email role year').sort({ lastTime: -1 }).lean();
+
+    const user = await User.findById(req.userId).select('name email');
+    const result = conversations.map(c => {
+      const other = c.participants.find(p => p._id.toString() !== req.userId);
+      return { ...c, other };
+    });
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+}
+
+export async function getOrCreateConversation(req, res) {
+  try {
+    const { otherUserId } = req.body;
+    if (!otherUserId) return res.status(400).json({ error: 'otherUserId required' });
+
+    let conversation = await Conversation.findOne({
+      participants: { $all: [req.userId, otherUserId] },
+    });
+
+    if (!conversation) {
+      conversation = await Conversation.create({
+        participants: [req.userId, otherUserId],
+      });
+    }
+
+    const populated = await Conversation.findById(conversation._id)
+      .populate('participants lastSender', 'name email role year institution');
+
+    res.json(populated);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+}
+
+export async function getDMMessages(req, res) {
+  try {
+    const { conversationId } = req.params;
+    const conversation = await Conversation.findById(conversationId);
+    if (!conversation) return res.status(404).json({ error: 'Conversation not found' });
+    if (!conversation.participants.some(p => p.toString() === req.userId)) {
+      return res.status(403).json({ error: 'Not a participant' });
+    }
+
+    const messages = await Message.find({ conversationId })
+      .sort({ createdAt: -1 }).limit(100).lean();
+    res.json(messages.reverse());
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+}
+
+export async function sendDMMessage(req, res) {
+  try {
+    const { conversationId, text } = req.body;
+    if (!text) return res.status(400).json({ error: 'Text is required' });
+
+    const conversation = await Conversation.findById(conversationId);
+    if (!conversation) return res.status(404).json({ error: 'Conversation not found' });
+    if (!conversation.participants.some(p => p.toString() === req.userId)) {
+      return res.status(403).json({ error: 'Not a participant' });
+    }
+
+    const user = await User.findById(req.userId).select('name');
+
+    const msg = await Message.create({
+      conversationId,
+      userId: req.userId,
+      userName: user?.name || 'Anonymous',
+      text,
+    });
+
+    conversation.lastMessage = text;
+    conversation.lastSender = req.userId;
+    conversation.lastTime = new Date();
+    await conversation.save();
+
+    const io = req.app.get('io');
+    if (io) {
+      conversation.participants.forEach(pid => {
+        const sid = pid.toString();
+        if (sid !== req.userId) {
+          io.emit('dm:new', { conversationId, message: msg, userId: sid });
+        }
+      });
+    }
+
+    res.status(201).json(msg);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

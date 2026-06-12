@@ -14,6 +14,7 @@ import roadmapRoutes from './routes/roadmap.js';
 import statsRoutes from './routes/stats.js';
 import drugRoutes from './routes/drugs.js';
 import apRoutes from './routes/ap.js';
+import notificationRoutes from './routes/notifications.js';
 
 dotenv.config();
 
@@ -40,6 +41,9 @@ app.use('/api/roadmap', roadmapRoutes);
 app.use('/api/stats', statsRoutes);
 app.use('/api/drugs', drugRoutes);
 app.use('/api/ap', apRoutes);
+app.use('/api/notifications', notificationRoutes);
+
+app.set('io', io);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', app: 'Nursphere', version: '1.0.0' });

@@ -5,7 +5,7 @@ const userSchema = new mongoose.Schema({
   name: { type: String, required: true },
   email: { type: String, required: true, unique: true, lowercase: true },
   password: { type: String, required: true },
-  role: { type: String, enum: ['BNSc Student', 'Diploma Nursing Student', 'Midwifery Student', 'Community Nursing Student', 'Post-Basic Student', 'RN', 'Midwife', 'Nursing Student', 'Other'], default: 'BNSc Student' },
+  role: { type: String, enum: ['admin', 'BNSc Student', 'Diploma Nursing Student', 'Midwifery Student', 'Community Nursing Student', 'Post-Basic Student', 'RN', 'Midwife', 'Nursing Student', 'Other'], default: 'BNSc Student' },
   year: { type: String, default: '1' },
   institution: { type: String, default: '' },
   avatar: { type: String, default: '' },
@@ -37,7 +37,8 @@ const userSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 userSchema.pre('save', async function (next) {
-  if (!this.isModified('password')) return next();
+  if (!this.isModified('password') || !this.password) return next();
+  if (this.password.startsWith('$2')) return next();
   this.password = await bcrypt.hash(this.password, 12);
   next();
 });

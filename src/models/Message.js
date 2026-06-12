@@ -1,7 +1,8 @@
 import mongoose from 'mongoose';
 
 const messageSchema = new mongoose.Schema({
-  channel: { type: String, required: true },
+  channel: { type: String },
+  conversationId: { type: mongoose.Schema.Types.ObjectId, ref: 'Conversation' },
   userId: { type: String, required: true },
   userName: { type: String, required: true },
   userAvatar: { type: String, default: '' },
@@ -11,5 +12,8 @@ const messageSchema = new mongoose.Schema({
     users: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
   }],
 }, { timestamps: true });
+
+messageSchema.index({ channel: 1, createdAt: -1 });
+messageSchema.index({ conversationId: 1, createdAt: -1 });
 
 export default mongoose.model('Message', messageSchema);

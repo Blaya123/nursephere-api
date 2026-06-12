@@ -1,5 +1,6 @@
 import { chatWithGemini, generateProcedure, generateDiagnosis, generateDailyTip, generateQuote, generateNews, generateRoadmap, generateCareerInsight } from '../services/gemini.js';
 import User from '../models/User.js';
+import ChatHistory from '../models/ChatHistory.js';
 
 const insightsCache = new Map();
 
@@ -10,9 +11,69 @@ function getCacheKey(year) {
 
 export async function chat(req, res) {
   try {
-    const { message, history } = req.body;
+    const { message, history, sessionId } = req.body;
     const response = await chatWithGemini(message, history || []);
-    res.json({ response });
+
+    let session;
+    if (sessionId) {
+      session = await ChatHistory.findById(sessionId);
+    }
+    if (!session) {
+      session = await ChatHistory.create({
+        userId: req.userId,
+        title: message.slice(0, 60),
+        messages: [],
+      });
+    }
+
+    session.messages.push({ role: 'user', text: message });
+    session.messages.push({ role: 'model', text: response });
+    if (session.messages.length <= 2) {
+      session.title = message.slice(0, 60);
+    }
+    await session.save();
+
+    res.json({ response, sessionId: session._id.toString() });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+}
+
+export async function getChatHistory(req, res) {
+  try {
+    const sessions = await ChatHistory.find({ userId: req.userId })
+      .select('title messages createdAt updatedAt')
+      .sort({ updatedAt: -1 })
+      .limit(30)
+      .lean();
+
+    const result = sessions.map(s => ({
+      _id: s._id,
+      title: s.title,
+      messageCount: s.messages.length,
+      createdAt: s.createdAt,
+      updatedAt: s.updatedAt,
+    }));
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+}
+
+export async function getChatSession(req, res) {
+  try {
+    const session = await ChatHistory.findOne({ _id: req.params.id, userId: req.userId });
+    if (!session) return res.status(404).json({ error: 'Session not found' });
+    res.json(session);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+}
+
+export async function deleteChatSession(req, res) {
+  try {
+    await ChatHistory.deleteOne({ _id: req.params.id, userId: req.userId });
+    res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

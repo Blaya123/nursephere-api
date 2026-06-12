@@ -2,7 +2,7 @@ import User from '../models/User.js';
 
 export async function getProfile(req, res) {
   try {
-    const user = await User.findById(req.userId).select('-password');
+    const user = await User.findById(req.userId).select('-password').populate('connections', 'name role year institution avatar stats');
     if (!user) return res.status(404).json({ error: 'User not found' });
     res.json(user);
   } catch (err) {
@@ -48,7 +48,39 @@ export async function connectUser(req, res) {
       await user.save();
     }
 
-    res.json({ connectionsCount: user.stats.connectionsCount });
+    if (!target.connections.includes(req.userId)) {
+      target.connections.push(req.userId);
+      target.stats.connectionsCount = target.connections.length;
+      await target.save();
+    }
+
+    const populated = await User.findById(req.userId)
+      .select('connections stats')
+      .populate('connections', 'name role year institution avatar stats');
+
+    res.json({ connectionsCount: user.stats.connectionsCount, connections: populated.connections });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+}
+
+export async function getConnections(req, res) {
+  try {
+    const user = await User.findById(req.userId)
+      .select('connections')
+      .populate('connections', 'name role year institution avatar stats connections');
+
+    const friends = (user?.connections || []).map(c => ({
+      _id: c._id,
+      name: c.name,
+      role: c.role,
+      year: c.year,
+      institution: c.institution,
+      avatar: c.avatar,
+      connectionsCount: c.stats?.connectionsCount || 0,
+    }));
+
+    res.json(friends);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
